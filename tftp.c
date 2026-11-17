@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include "tftp.h"
-#include "file.h"
 
 /* tftp protocol implementation 
  * Both server and client must use this file for sen/receive data
