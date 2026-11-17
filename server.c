@@ -61,8 +61,18 @@ int main(int argc, char *argv[])
                   FILE *fp = fopen(filename, "rb");
                   if(fp == NULL)
                   {
-                        printf("Error: File not found\n");
-                        //For a complete project we need a ERROR packet (Opcode 5) in here
+                        // printf("Error: File not found\n");
+                        // //For a complete project we need a ERROR packet (Opcode 5) in here
+                        // continue;
+
+                        //Construct and send the ERROR packet
+                        char err_packet[PACKETSIZE];
+
+                        //Using ECODE_1 and ESTRING_1 is defined in tftp.h
+                        int err_len = packet_form_error(err_packet, ECODE_1, ESTRING_1);
+
+                        sendto(sockfd, err_packet, err_len, 0, (struct sockaddr *)&client_addr, client_len);
+                        printf("Error: Sent 'File not found' to client.\n");
                         continue;
                   }
 
@@ -99,6 +109,74 @@ int main(int argc, char *argv[])
                   }
                   fclose(fp);
             }
+            else if (IS_WRQ(opcode)) 
+            {
+                  char filename[256];
+                  strcpy(filename, buffer + 2);
+                  printf("Client wants to upload file: %s\n", filename);
+
+                  FILE *fp = fopen(filename, "wb");
+                  if (fp == NULL) 
+                  {
+                        // printf("Error: Cannot create file.\n");
+                        // continue;
+                        //Construct and send the ERROR packet
+                        char err_packet[PACKETSIZE];
+
+                        //Using ECODE_1 and ESTRING_1 is defined in tftp.h
+                        int err_len = packet_form_error(err_packet, ECODE_2, ESTRING_2);
+
+                        sendto(sockfd, err_packet, err_len, 0, (struct sockaddr *)&client_addr, client_len);
+                        printf("Error: Sent 'Access violation.' to client.\n");
+                        continue;
+                  }
+
+                  // Acknowledge the WRQ with Block 0[cite: 7]
+                  char ack_packet[4];
+                  int ack_len = packet_form_ack(ack_packet, 0);
+                  sendto(sockfd, ack_packet, ack_len, 0, (struct sockaddr *)&client_addr, client_len);
+
+                  unsigned short expected_block = 1;
+                  char recv_buffer[PACKETSIZE];
+
+                  while (1) {
+                  // RESET client_len before every receive!
+                  client_len = sizeof(client_addr);
+                  int bytes_received = recvfrom(sockfd, recv_buffer, PACKETSIZE, 0, (struct sockaddr *)&client_addr, &client_len);
+                  
+                  if (bytes_received < 4) continue; // Ignore malformed/empty packets
+
+                  short rcv_opcode, block_num;
+                  memcpy(&rcv_opcode, recv_buffer, 2);
+                  memcpy(&block_num, recv_buffer + 2, 2);
+                  rcv_opcode = ntohs(rcv_opcode);
+                  block_num = ntohs(block_num);
+
+                  // DEBUG: See exactly what the server receives
+                  printf("DEBUG: Server received %d bytes | Opcode: %d | Block: %d\n", bytes_received, rcv_opcode, block_num);
+
+                  if (rcv_opcode == OPCODE_DATA && block_num == expected_block) {
+                        int data_len = bytes_received - 4;
+                        
+                        // Write payload to disk
+                        fwrite(recv_buffer + 4, 1, data_len, fp);
+                        printf("Received block %d (%d bytes)\n", block_num, data_len);
+
+                        // Send ACK for received block[cite: 6]
+                        ack_len = packet_form_ack(ack_packet, block_num);
+                        sendto(sockfd, ack_packet, ack_len, 0, (struct sockaddr *)&client_addr, client_len);
+
+                        // End of transfer if data is less than 512 bytes[cite: 8]
+                        if (data_len < BLIMIT) {
+                              printf("File upload complete.\n");
+                              break; // This breaks the loop so fclose() can run!
+                        }
+                        expected_block++;
+                  }
+                  }
+                  fclose(fp); // Flushes the data to the file so it isn't empty!
+        }
+
       }
 
       return 0;

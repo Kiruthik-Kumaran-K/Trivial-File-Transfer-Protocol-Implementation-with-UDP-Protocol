@@ -82,6 +82,22 @@ int main(int argc, char *argv[])
                   opcode = ntohs(opcode);
                   block_num = ntohs(block_num);
 
+                  if(opcode == OPCODE_ERROR)
+                  {
+                        // extract error code and message
+                        short err_code;
+                        memcpy(&err_code, recv_buffer + 2, 2);
+                        err_code = ntohs(err_code);
+
+                        // The error string starts at the 4 th byte
+                        printf("Server Error %d: %s\n", err_code, recv_buffer + 4);
+
+                        //Delete the empty local file we just created.
+                        fclose(fp);
+                        remove(argv[4]);
+                        return 1;
+                  }
+
                   if(opcode == OPCODE_DATA && block_num == expected_block)
                   {
                         // Calculate how much actual file data in this packet (Total size - 4 for headers)
@@ -108,6 +124,56 @@ int main(int argc, char *argv[])
             }
             fclose(fp);
 
+      }
+      else if(strcmp(operation, "put") == 0)
+      {
+            FILE *fp = fopen(filename, "rb");
+            if(fp == NULL)
+            {
+                  perror("Failed to open local file.");
+                  close(sockfd);
+                  return 1;
+            }
+
+            char packet[PACKETSIZE];
+            int len = packet_form_wrq(packet, argv[4], MODE_OCTET); // argv[4] is what it will be named in server
+
+            // Send WRQ
+            sendto(sockfd, packet, len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
+            printf("Initiated upload for %s...\n", filename);
+
+            // Wait for Block 0
+            char ack_buffer[PACKETSIZE];
+            socklen_t server_len = sizeof(server_addr);
+            recvfrom(sockfd, ack_buffer, PACKETSIZE, 0, (struct sockaddr *)&server_addr, &server_len);
+
+            unsigned short block_num = 1;
+            char file_data[BLIMIT];
+            int bytes_read;
+
+            while (1) 
+            {
+                  bytes_read = fread(file_data, 1, BLIMIT, fp);
+                  
+                  // Form and send DATA packet[cite: 6]
+                  char data_packet[PACKETSIZE];
+                  int packet_len = packet_form_data(data_packet, block_num, file_data, bytes_read);
+                  
+                  // Use sizeof(server_addr) directly here to guarantee safety
+                  sendto(sockfd, data_packet, packet_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
+                  printf("Sent block %d (%d bytes)\n", block_num, bytes_read);
+
+                  // Wait for ACK
+                  server_len = sizeof(server_addr); // Reset before receive
+                  recvfrom(sockfd, ack_buffer, PACKETSIZE, 0, (struct sockaddr *)&server_addr, &server_len);
+                  
+                  if (bytes_read < BLIMIT) {
+                  printf("Upload successful.\n");
+                  break;
+                  }
+                  block_num++;
+            }
+            fclose(fp);
       }
 
       close(sockfd);

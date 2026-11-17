@@ -95,5 +95,7 @@ typedef struct tftp_packet
 int packet_form_rrq(char *buffer, const char *filename, const char *mode);
 int packet_form_data(char *buffer, unsigned short block_num, const char *data, int data_len);
 int packet_form_ack(char *buffer, unsigned short block_num);
+int packet_form_wrq(char *buffer, const char *filename, const char *mode);
+int packet_form_error(char *buffer, unsigned short err_code, const char *err_msg);
 
 #endif

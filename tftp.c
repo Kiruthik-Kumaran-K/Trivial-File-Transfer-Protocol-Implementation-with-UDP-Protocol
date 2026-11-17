@@ -83,3 +83,48 @@
       
       return len; // ACK packets are always exactly 4 bytes lon
  }
+
+ //Formats a WRQ packet buffer
+ //Opcode (2) | Filename | 0 | Mode | 0
+ int packet_form_wrq(char *buffer, const char *filename, const char *mode)
+ {
+      int len = 0;
+
+      // Add Opcode for WRQ (2)
+      short opcode = htons(OPCODE_WRQ);
+      memcpy(buffer, &opcode, 2);
+      len += 2;
+
+      // Add Filename + Null terminator
+      strcpy(buffer + len, filename);
+      len += strlen(filename) + 1;
+
+      //Add Mode + Null terminator
+      strcpy(buffer + len, mode);
+      len += strlen(mode) + 1;
+
+      return len;
+ }
+
+ //Formats an ERROR packet
+ // Opcode (2 Bytes) | Error Code (2 Bytes) | ErrMSG } 0
+ int packet_form_error(char *buffer, unsigned short err_code, const char *err_msg)
+ {
+      int len = 0;
+
+      // Add Opcode for ERROR (5)
+      short opcode = htons(OPCODE_ERROR);
+      memcpy(buffer, &opcode, 2);
+      len += 2;
+
+      // Add Error Code
+      short ecode = htons(err_code);
+      memcpy(buffer + len, &ecode, 2);
+      len += 2;
+
+      // Add Error message + Null terminator
+      strcpy(buffer + len, err_msg);
+      len += strlen(err_msg) + 1;
+
+      return len;
+ }
