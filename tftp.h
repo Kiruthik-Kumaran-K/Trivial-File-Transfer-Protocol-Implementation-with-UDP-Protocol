@@ -50,47 +50,6 @@ typedef unsigned short ecode_t; /*TFTP Error code*/
 #define TIMEOUT         1 /*Socket receive timeout*/
 #define TIMEOUT_LIMIT   10
 
-typedef unsigned short bnum_t; /*TFTP Block number, for data packets*/
-typedef char packetbuffer_t; /*Packet buffer*/
-
-/*Struct for storage of the data extracted from a packet buffer*/
-typedef struct tftp_packet
-{
-    char filename[PACKETSIZE];
-    opcode_t opcode;
-    char mode[PACKETSIZE];
-    char data[BLIMIT];
-    int data_length;
-    bnum_t blocknum;
-    ecode_t ecode;
-    char estring[PACKETSIZE];
-    int estring_length;
-}packet_t;
-
-// /* Packet Parsing */
-// int packet_parse();
-// void packet_extract_opcode();
-// void packet_parse_rq();
-// void packet_parse_data();
-// void packet_parse_ack();
-// void packet_parse_error();
-
-// /* Packet Formation */
-// packetbuffer_t *append_to_packet();
-// // void packet_form_rrq();
-// void packet_form_wrq();
-// // void packet_form_data();
-// void packet_form_error();
-// void packet_form_ack();
-// void packet_free();
-
-// /* Packet Receipt */
-// int packet_receive_rrq();
-// int packet_receive_wrq();
-// int packet_receive_data();
-// int packet_receive_ack();
-// int packet_receive_error();
-// int packet_receive_invalid();
 
 int packet_form_rrq(char *buffer, const char *filename, const char *mode);
 int packet_form_data(char *buffer, unsigned short block_num, const char *data, int data_len);
