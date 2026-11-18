@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
       printf("Type help to get supported features\n");
 
       char input[256];
+      char current_mode[16] = "octet"; // Default to binary mode
       while(1)
       {
             printf("tftp> ");
@@ -93,7 +94,8 @@ int main(int argc, char *argv[])
                   inet_pton(AF_INET, server_ip, &server_addr.sin_addr);
 
                   char packet[PACKETSIZE];
-                  int len = packet_form_rrq(packet, filename, MODE_OCTET);
+                  // int len = packet_form_rrq(packet, filename, MODE_OCTET);
+                  int len = packet_form_rrq(packet, filename, current_mode);
 
                   // Send RRQ to server
                   sendto(sockfd, packet, len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
@@ -235,7 +237,8 @@ int main(int argc, char *argv[])
                   }
 
                   char packet[PACKETSIZE];
-                  int len = packet_form_wrq(packet, filename, MODE_OCTET);
+                  // int len = packet_form_wrq(packet, filename, MODE_OCTET);
+                  int len = packet_form_rrq(packet, filename, current_mode);
 
                   // Send WRQ
                   sendto(sockfd, packet, len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
@@ -334,6 +337,20 @@ int main(int argc, char *argv[])
                         fclose(fp);
             }
 
+            // --- COMMAND: MODE ---
+            else if (strcmp(cmd, "mode") == 0) 
+            {
+                  if (strcmp(filename, "octet") == 0 || strcmp(filename, "netascii") == 0) 
+                  {
+                        strcpy(current_mode, filename);
+                        printf("Mode set to %s\n", current_mode);
+                  } 
+                  else 
+                  {
+                        printf("Invalid mode. Supported modes are 'octet' and 'netascii'.\n");
+                  }
+            }
+
             // --- COMMAND: QUIT ---
             else if(strcmp(cmd, "quit") == 0 || strcmp(cmd, "bye") == 0)
             {
@@ -343,6 +360,7 @@ int main(int argc, char *argv[])
             {
                   printf("Invalid command\n");
             }
+
       }
       return 0;
 }
