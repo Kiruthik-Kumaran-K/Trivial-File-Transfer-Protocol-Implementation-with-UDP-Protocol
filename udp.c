@@ -1,51 +1,55 @@
 /*############################################################################################### 
  *
- *           Author         : 
- *           Date           : 
- *           File           : udp.c©
- *           Descriptions   : Functions to bind udp sockets for server and clients.
- *           Objective      : Create a UDP socket and bind with given IP address and PORT number
- *           Usage          :
- *           Output         :
+ *           Author         : Kiruthik Kumaran k
+ *           Date           : November 2026
+ *           File           : udp.c
+ *           Description    : UDP socket initialization and port-binding utilities
+ *           Objective      : Create an IPv4 UDP socket and bind it to a specified local port
+ *                            so the TFTP server can listen for incoming datagrams.
+ *           Usage          : Compiled and linked with server.c (via udp.h)
+ *           Output         : Valid bound socket file descriptor, or process exit on failure
  *
 ###############################################################################################*/
 
-#include <netinet/in.h>
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include "tftp.h"
+#include <netinet/in.h> // struct sockaddr_in, INADDR_ANY, htons()
+#include <stdio.h>      // perror() for system error reporting
+#include <errno.h>      // System error codes
+#include <stdlib.h>     // exit(), EXIT_FAILURE
+#include <string.h>     // memset()
+#include <sys/socket.h> // socket(), bind(), AF_INET, SOCK_DGRAM
+#include <arpa/inet.h>  // Internet address manipulation utilities
+#include <unistd.h>     // close() for releasing socket descriptors on error
+#include "tftp.h"       // Shared TFTP definitions
 
-/* To create sockets and binding for server and clients*/
-
-/* Create and bind a UDP socket (Used mainly by the server)*/
+// =======================================================================
+// UDP Socket Creation & Binding (Primarily used by the TFTP Server)
+// =======================================================================
 int create_bind_udp_socket(int port)
 {
       int sockfd;
       struct sockaddr_in server_addr;
 
-      //Create a UDP socket
-      if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+      // 1. Create an IPv4 (AF_INET), connectionless UDP (SOCK_DGRAM) socket
+      if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
       {
             perror("Socket creation failed");
             exit(EXIT_FAILURE);
       }
 
+      // 2. Zero-initialize the address structure to clear padding bytes (sin_zero)
       memset(&server_addr, 0, sizeof(server_addr));
-      server_addr.sin_family = AF_INET;
-      server_addr.sin_addr.s_addr = INADDR_ANY;
-      server_addr.sin_port = htons(port);
+      server_addr.sin_family = AF_INET;                // IPv4 address family
+      server_addr.sin_addr.s_addr = INADDR_ANY;        // Listen on all available network interfaces (0.0.0.0)
+      server_addr.sin_port = htons(port);              // Convert port to Network Byte Order (Big-Endian)
 
-      // Bind the socket to the port
-      if( bind(sockfd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+      // 3. Bind the socket to the configured IP and port so clients can reach the server
+      if (bind(sockfd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
       {
             perror("Bind failed");
-            close(sockfd);
+            close(sockfd); // Release the socket descriptor before terminating
             exit(EXIT_FAILURE);
       }
 
+      // Return the ready-to-use bound socket file descriptor
       return sockfd;
 }
