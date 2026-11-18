@@ -102,112 +102,13 @@ int main(int argc, char *argv[])
                   FILE *fp = fopen(filename, "wb");
                   if(fp == NULL)
                   {
-                        perror("Failed to create a outp[ut file");
+                        perror("Failed to create a output file");
                         close(sockfd);
                         continue;
                   }
 
                   unsigned short expected_block = 1;
                   char recv_buffer[PACKETSIZE];
-                  // socklen_t server_len = sizeof(server_addr);
-
-                  // int timeout_count = 0; // Track how many times we've timed out
-
-                  // To retransmit, we need to remember the last packet we sent
-                  // char last_ack_packet[4];
-                  // int last_ack_len = 0;
-
-                  // while(1)
-                  // {
-                  //       // wait for DATA packet from Server
-                  //       int bytes_received = recvfrom(sockfd, recv_buffer, PACKETSIZE, 0, (struct sockaddr *)&server_addr, &server_len);
-
-                  //       // Check if recvfrom failed due to timeout
-                  //       if(bytes_received < 0)
-                  //       {
-                  //             if(errno == EAGAIN || errno == EWOULDBLOCK)
-                  //             {
-                  //                   timeout_count++;
-                  //                   if(timeout_count >= TIMEOUT_LIMIT)
-                  //                   {
-                  //                         printf("ERROR: Connection timed out completely\n");
-                  //                         break; //give up
-                  //                   }
-
-                  //                   printf("Timeout %d! Retransmitting last packet ...\n", timeout_count);
-
-                  //                   //Retransmit the RRQ if we haven't received the first block yet,
-                  //                   //Otherwise retransmit the last ACK
-                  //                   if(expected_block == 1)
-                  //                   {
-                  //                         sendto(sockfd, packet, len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
-                  //                   }
-                  //                   else
-                  //                   {
-                  //                         sendto(sockfd, last_ack_packet, last_ack_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
-                  //                   }
-                  //                   continue;
-                  //             }
-                  //             else
-                  //             {
-                  //                   perror("recvfrom error");
-                  //                   break;
-                  //             }
-                  //       }
-
-                  //       // If we succesfully received a packet, reset the time counter!
-                  //       timeout_count = 0;
-
-                  //       //Extract Opcode and Block Number
-                  //       short opcode, block_num;
-                  //       memcpy(&opcode, recv_buffer, 2);
-
-                  //       if(opcode == OPCODE_ERROR)
-                  //       {
-                  //             //Extract error code and message
-                  //             short err_code;
-                  //             memcpy(&err_code, recv_buffer + 2, 2);
-                  //             err_code = ntohs(err_code);
-
-                  //             // The error string starts at the 4th byte
-                  //             printf("Server Error %d:  %s\n", err_code, recv_buffer + 4);
-
-                  //             //Delete the empty local file we just created
-                  //             fclose(fp);
-                  //             fp = NULL;
-                  //             remove(filename);
-                  //             break;
-                  //       }
-
-                  //       //Extract Block Number
-                  //       memcpy(&block_num, recv_buffer + 2, 2);
-                  //       opcode = ntohs(opcode);
-                  //       block_num = ntohs(block_num);
-
-                  //       if(opcode == OPCODE_DATA && block_num == expected_block)
-                  //       {
-                  //             // calculate how much actual file data in this packet. (Total size - $bytes of headers)
-                  //             int data_len = bytes_received - 4;
-
-                  //             //Write the data payload to the local file
-                  //             fwrite(recv_buffer + 4, 1, data_len, fp);
-                  //             printf("Received block %d (%d bytes)\n", block_num, data_len);
-
-                  //             //Form and send the ACK packet
-                  //             char ack_packet[4];
-                  //             last_ack_len = packet_form_ack(last_ack_packet, block_num);
-                  //             sendto(sockfd, ack_packet, last_ack_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
-
-                  //             //If received dat is less than 512 bytes, the transfer is completed.
-                  //             if(data_len < BLIMIT)
-                  //             {
-                  //                   printf("File transfer successful.\n");
-                  //                   break;
-                  //             }
-
-                  //             expected_block++;
-                  //       }
-                  // }
 
                   int timeout_count = 0;
                   char last_ack_packet[4];
@@ -261,6 +162,7 @@ int main(int argc, char *argv[])
                               short err_code;
                               memcpy(&err_code, recv_buffer + 2, 2);
                               printf("Server Error %d: %s\n", ntohs(err_code), recv_buffer + 4);
+                              remove(filename);
                               break;
                         }
 
@@ -358,74 +260,6 @@ int main(int argc, char *argv[])
                   // Track the exact ACK we expect to receive (starts at 0 for WRQ)
                   unsigned short current_block = 0; 
 
-                  // while(1)
-                  // {
-                  //       server_len = sizeof(server_addr);
-                  //       int bytes_received = recvfrom(sockfd, ack_buffer, PACKETSIZE, 0, (struct sockaddr *)&server_addr, &server_len);
-
-                  //       // --- Timeout Handling ---
-                  //       if(bytes_received < 0)
-                  //       {
-                  //             if(errno == EAGAIN || errno == EWOULDBLOCK)
-                  //             {
-                  //                   timeout_count++;
-                  //                   if(timeout_count >= TIMEOUT_LIMIT)
-                  //                   {
-                  //                         printf("ERROR: Connection timed out completely.\n");
-                  //                         break;
-                  //                   }
-
-                  //                   printf("Timeout %d! Retransmitting last packet...\n", timeout_count);
-                  //                   sendto(sockfd, last_packet, last_packet_len, 0 , (struct sockaddr *)&server_addr, sizeof(server_addr));
-                  //                   continue; //Go back to waiting for recvfrom
-                  //             }
-                  //             else
-                  //             {
-                  //                   perror("recvfrom error");
-                  //                   break;
-                  //             }
-                  //       }
-
-                  //       timeout_count = 0;
-
-                  //       if (bytes_received < 4) continue; // Ignore malformed packets
-
-                  //       //Extract Opcode and Block Number from ACK
-                  //       short rcv_opcode, ack_block;
-                  //       memcpy(&rcv_opcode, ack_buffer, 2);
-                  //       memcpy(&ack_buffer, ack_buffer + 2, 2);
-                  //       rcv_opcode = ntohs(rcv_opcode);
-                  //       ack_block = ntohs(ack_block);
-
-                  //       printf("DEBUG Client: Received Opcode %d | ACK Block %d\n", rcv_opcode, ack_block);
-
-                  //       //If it is an ACK and it matches the block we just sent (or block 0 for WRQ)
-                  //       if(rcv_opcode == OPCODE_ACK && ack_block == current_block)
-                  //       {
-
-                  //             // If we just acknowledged a block that was less than 512 bytes, we are officially done!
-                  //             if (current_block > 0 && bytes_read < BLIMIT) 
-                  //             {
-                  //                   printf("Upload successful.\n");
-                  //                   break;
-                  //             }
-
-                  //             // Move to the next block
-                  //             current_block++; 
-
-                  //             // Dont erase this code
-                  //             bytes_read = fread(file_data, 1, BLIMIT, fp);
-
-                  //             //Form and send DATA packet
-                  //             last_packet_len = packet_form_data(last_packet, current_block, file_data, bytes_read);
-
-                  //             // Use sizeof(server_addr) directly to guarantee safety
-                  //             sendto(sockfd, last_packet, last_packet_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
-                  //             printf("Sent block %d (%d bytes)\n", current_block, bytes_read);
-
-                  //       }
-
-                  // }
                   while(1)
                   {
                         server_len = sizeof(server_addr);
@@ -460,6 +294,16 @@ int main(int argc, char *argv[])
                         memcpy(&ack_block, ack_buffer + 2, 2);
                         rcv_opcode = ntohs(rcv_opcode);
                         ack_block = ntohs(ack_block);
+
+                        // --- NEW ERROR CHECK ---
+                        if (rcv_opcode == OPCODE_ERROR) 
+                        {
+                              short err_code;
+                              memcpy(&err_code, ack_buffer + 2, 2);
+                              printf("Server Error %d: %s\n", ntohs(err_code), ack_buffer + 4);
+                              break; // Stop the upload cleanly!
+                        }
+                        // -----------------------
 
                         // Only process if it is the EXACT ACK we are waiting for
                         if (rcv_opcode == OPCODE_ACK && ack_block == current_block)
